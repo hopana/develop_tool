@@ -104,6 +104,58 @@ public class RedisBatchQueryUtils {
 
 
 
+    /**
+     * @Author zhanghao
+     * @Description 批量获取Hash的值,用rediskey 作为key
+     * @Date  2019/4/17
+     * @Param [hashKeys] 值分别为 redisKey ,fieldKey
+     * @return Map
+     **/
+    public static <T> Map<String,T> getHashValueMapByT1(List<Tuple2<String,String>> hashKeys){
+        Map<Integer,String> resultIndex = Maps.newHashMap();
+        AtomicInteger atomicInteger = new AtomicInteger();
+        final List<T> resultList = (List<T>) redisTemplate.executePipelined((RedisCallback<T>) connection -> {
+            final RedisSerializer keySerializer = redisTemplate.getKeySerializer();
+            final RedisSerializer hashKeySerializer = redisTemplate.getHashKeySerializer();
+            final RedisHashCommands redisHashCommands = connection.hashCommands();
+            hashKeys.forEach(e -> {
+                redisHashCommands.hGet(keySerializer.serialize(e.getT1()), hashKeySerializer.serialize(e.getT2()));
+                resultIndex.put(atomicInteger.getAndIncrement(),e.getT1());
+            });
+            return null;
+        }).stream().collect(Collectors.toList());
+        return IntStream.range(0, resultList.size())
+                .mapToObj(i ->  Objects.nonNull(resultList.get(i)) ? Tuples.of(resultIndex.get(i), resultList.get(i)) : null)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(t -> t.getT1(),   t -> t.getT2()));
+    }
+
+
+    /**
+     * @Author zhanghao
+     * @Description 批量获取Hash的值,fieldKey 作为key
+     * @Date  2019/4/17
+     * @Param [hashKeys] 值分别为 redisKey ,fieldKey
+     * @return Map
+     **/
+    public static <T> Map<String,T> getHashValueMapByT2(List<Tuple2<String,String>> hashKeys){
+        Map<Integer,String> resultIndex = Maps.newHashMap();
+        AtomicInteger atomicInteger = new AtomicInteger();
+        final List<T> resultList = (List<T>) redisTemplate.executePipelined((RedisCallback<T>) connection -> {
+            final RedisSerializer keySerializer = redisTemplate.getKeySerializer();
+            final RedisSerializer hashKeySerializer = redisTemplate.getHashKeySerializer();
+            final RedisHashCommands redisHashCommands = connection.hashCommands();
+            hashKeys.forEach(e -> {
+                redisHashCommands.hGet(keySerializer.serialize(e.getT1()), hashKeySerializer.serialize(e.getT2()));
+                resultIndex.put(atomicInteger.getAndIncrement(),e.getT2());
+            });
+            return null;
+        }).stream().collect(Collectors.toList());
+        return IntStream.range(0, resultList.size())
+                .mapToObj(i ->  Objects.nonNull(resultList.get(i)) ? Tuples.of(resultIndex.get(i), resultList.get(i)) : null)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(t -> t.getT1(),   t -> t.getT2()));
+    }
 
 
 }
